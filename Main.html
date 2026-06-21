@@ -32,6 +32,7 @@
 
         header {
             background-color: #1e3a8a;
+            position: relative;
             color: white;
             padding: 20px;
             text-align: center;
@@ -41,6 +42,19 @@
         header h1 {
             margin-bottom: 5px;
             font-size: 28px;
+        }
+
+        .datetime {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.9);
+            background: rgba(0,0,0,0.08);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
         }
 
         header p {
@@ -326,6 +340,7 @@
     <header>
         <h1>🎯 Ballistic Scope Calculator</h1>
         <p>Adjust rifle scope settings based on environmental and ballistic factors</p>
+        <div id="dateTime" class="datetime" aria-live="polite"></div>
     </header>
 
     <div class="container">
@@ -349,6 +364,14 @@
                 <button type="button" class="calculate" id="useLocationBtn">Use current location</button>
                 <button type="button" class="calculate" id="fetchWeatherBtn">Fetch weather data</button>
                 <button type="button" class="calculate" id="refreshBtn">Refresh summary</button>
+                <label style="align-self:center; font-size:13px; margin-left:8px;">
+                    <input type="checkbox" id="useCacheCheckbox" checked style="margin-right:6px;">Use cached weather within 50 mi
+                </label>
+                <div style="display:flex; align-items:center; gap:8px; margin-left:8px;">
+                    <select id="cachedList" style="font-size:13px; padding:6px; min-width:240px;"></select>
+                    <button type="button" class="calculate" id="loadCacheBtn">Load cached</button>
+                    <button type="button" class="calculate" id="clearCacheBtn">Clear cache</button>
+                </div>
             </div>
             <div class="output-note" id="locationNote">Use HTTPS or localhost on iPhone for geolocation and free API data.</div>
         </div>
@@ -511,6 +534,99 @@
             }
         }
 
+        // --- Location-based weather cache helpers ---
+        function haversineMiles(lat1, lon1, lat2, lon2) {
+            const toRad = d => d * Math.PI / 180;
+            const R = 3958.8; // Earth radius in miles
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function getWeatherCache() {
+            try {
+                const raw = localStorage.getItem('weatherCache_v1');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        }
+
+        function setWeatherCache(entries) {
+            try { localStorage.setItem('weatherCache_v1', JSON.stringify(entries)); } catch (e) {}
+        }
+
+        // Return minimal cached data if within range and TTL. TTL default 30min.
+        function getCachedWeather(lat, lon, maxMiles = 50, maxAgeMs = 30*60*1000) {
+            const useCache = document.getElementById('useCacheCheckbox')?.checked;
+            if (!useCache) return null;
+            const entries = getWeatherCache();
+            const now = Date.now();
+            for (let i = 0; i < entries.length; i++) {
+                const e = entries[i];
+                if (!e || typeof e.lat !== 'number' || typeof e.lon !== 'number' || !e.ts) continue;
+                const dist = haversineMiles(lat, lon, e.lat, e.lon);
+                if (dist <= maxMiles && (now - e.ts) <= maxAgeMs) {
+                    return e.data;
+                }
+            }
+            return null;
+        }
+
+        // Store a compressed payload to keep localStorage small: only necessary fields.
+        function setCachedWeather(lat, lon, data) {
+            try {
+                const compressed = {
+                    current_weather: data.current_weather || null,
+                    hourly: {
+                        time: data.hourly?.time || [],
+                        relativehumidity_2m: data.hourly?.relativehumidity_2m || [],
+                        pressure_msl: data.hourly?.pressure_msl || []
+                    },
+                    elevation: data.elevation,
+                    current_weather_units: data.current_weather_units || null,
+                    hourly_units: data.hourly_units || null
+                };
+                const entries = getWeatherCache();
+                entries.unshift({ lat, lon, ts: Date.now(), data: compressed });
+                while (entries.length > 12) entries.pop();
+                setWeatherCache(entries);
+            } catch (e) {
+                console.warn('Failed to cache weather', e);
+            }
+        }
+
+        // Populate the cached entries dropdown; if lat/lon provided, show distance.
+        function populateCachedList(currLat, currLon) {
+            const sel = document.getElementById('cachedList');
+            if (!sel) return;
+            sel.innerHTML = '';
+            const entries = getWeatherCache();
+            if (!entries || entries.length === 0) {
+                const opt = document.createElement('option'); opt.textContent = 'No cached entries'; opt.value = '';
+                sel.appendChild(opt);
+                return;
+            }
+            entries.forEach((e, idx) => {
+                const date = new Date(e.ts);
+                let label = `${date.toLocaleString()} (${Math.round((Date.now()-e.ts)/60000)}m ago)`;
+                if (typeof currLat === 'number' && typeof currLon === 'number') {
+                    const d = haversineMiles(currLat, currLon, e.lat, e.lon);
+                    label += ` — ${d.toFixed(1)} mi`;
+                }
+                const opt = document.createElement('option'); opt.value = String(idx); opt.textContent = label;
+                sel.appendChild(opt);
+            });
+        }
+
+        function clearWeatherCache() {
+            try { localStorage.removeItem('weatherCache_v1'); } catch (e) {}
+            populateCachedList();
+            setStatus('Cache cleared.');
+        }
+
         async function fetchWeatherData() {
             const lat = getInputValue('latitude');
             const lon = getInputValue('longitude');
@@ -520,17 +636,37 @@
             }
             setStatus('Fetching environment data from Open-Meteo...');
             try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&pressure_unit=inHg&hourly=relativehumidity_2m,pressure_msl,winddirection_10m,windgusts_10m&timezone=auto`;
-                console.debug('Fetching weather URL:', url);
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Open-Meteo request failed.');
+                // check cache first
+                const cached = getCachedWeather(lat, lon);
+                let data = null;
+                if (cached) {
+                    data = cached;
+                    console.debug('Using cached weather for location', lat, lon);
+                    setStatus('Using cached environment data (within 50 mi).');
+                } else {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&pressure_unit=inHg&hourly=relativehumidity_2m,pressure_msl,winddirection_10m,windgusts_10m&timezone=auto`;
+                    console.debug('Fetching weather URL:', url);
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error('Open-Meteo request failed.');
+                    }
+                    data = await response.json();
+                    // save to cache for reuse
+                    try { setCachedWeather(lat, lon, data); } catch (e) { /* ignore */ }
                 }
-                const data = await response.json();
+                handleWeatherJsonData(data, 'fetched');
+            } catch (error) {
+                setStatus(`Weather fetch failed: ${error.message}`, true);
+            }
+        }
+
+            // Shared processing for Open-Meteo JSON (fetched or cached)
+            function handleWeatherJsonData(data, sourceLabel) {
                 console.debug('Open-Meteo response:', data);
                 const current = data.current_weather;
                 if (!current) {
-                    throw new Error('Current weather data not returned.');
+                    setStatus('Weather data missing current_weather.', true);
+                    return;
                 }
 
                 const temperatureUnit = data.current_weather_units?.temperature;
@@ -579,12 +715,9 @@
                 }
 
                 const debugUnit = temperatureUnit || data.current_weather_units?.temperature || 'unknown';
-                setStatus(`Loaded ${temperature.toFixed(1)}°F from Open-Meteo (source unit: ${debugUnit}).`);
+                setStatus(`Loaded ${temperature.toFixed(1)}°F from Open-Meteo (source: ${sourceLabel}; unit: ${debugUnit}).`);
                 refreshSummary();
-            } catch (error) {
-                setStatus(`Weather fetch failed: ${error.message}`, true);
             }
-        }
 
         function calculateEffectiveRange() {
             const range = getInputValue('range');
@@ -653,6 +786,20 @@
 
         document.getElementById('useLocationBtn').addEventListener('click', useCurrentLocation);
         document.getElementById('fetchWeatherBtn').addEventListener('click', fetchWeatherData);
+        document.getElementById('loadCacheBtn').addEventListener('click', () => {
+            const sel = document.getElementById('cachedList');
+            const idx = sel && sel.value ? parseInt(sel.value, 10) : -1;
+            const entries = getWeatherCache();
+            if (idx >= 0 && entries && entries[idx]) {
+                handleWeatherJsonData(entries[idx].data, 'cached');
+                setStatus('Loaded cached data.');
+            } else {
+                setStatus('No cached entry selected.', true);
+            }
+        });
+        document.getElementById('clearCacheBtn').addEventListener('click', () => {
+            clearWeatherCache();
+        });
         document.getElementById('refreshBtn').addEventListener('click', refreshSummary);
 
         const autoRefreshFields = [
@@ -671,12 +818,34 @@
         });
 
         setStatus('Ready. Use location + fetch weather to auto-fill values.');
+        // Populate cached dropdown without a current location first
+        populateCachedList();
     </script>
+
+    <footer style="font-size:13px; color:#475569; text-align:center; padding:12px 20px; background:transparent;">
+        Data sources: Weather (temperature, humidity, wind, pressure, elevation) provided by <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a>.
+    </footer>
+
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js')
                 .catch(err => console.error('Service Worker registration failed:', err));
         }
+    </script>
+    <script>
+        function updateDateTime() {
+            const el = document.getElementById('dateTime');
+            if (!el) return;
+            const now = new Date();
+            // 24-hour format with timezone short label, e.g. "2026-06-21, 23:34:56 GMT+2"
+            el.textContent = now.toLocaleString(undefined, {
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false, timeZoneName: 'short'
+            });
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
     </script>
 </body>
 </html>
