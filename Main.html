@@ -545,9 +545,26 @@
                     windSpeed = windSpeed / 1.60934;
                 }
 
-                const timeIndex = data.hourly?.time?.indexOf(current.time);
-                const humidity = timeIndex >= 0 ? data.hourly.relativehumidity_2m[timeIndex] : null;
+                let timeIndex = data.hourly?.time?.indexOf(current.time);
+                let humidity = timeIndex >= 0 ? data.hourly.relativehumidity_2m[timeIndex] : null;
                 let pressure = timeIndex >= 0 ? data.hourly.pressure_msl[timeIndex] : null;
+                if (timeIndex < 0 && Array.isArray(data.hourly?.time)) {
+                    const currentDate = new Date(current.time);
+                    let nearestIndex = -1;
+                    let nearestDiff = Infinity;
+                    data.hourly.time.forEach((timeString, index) => {
+                        const date = new Date(timeString);
+                        const diff = Math.abs(date - currentDate);
+                        if (!Number.isNaN(diff) && diff < nearestDiff) {
+                            nearestDiff = diff;
+                            nearestIndex = index;
+                        }
+                    });
+                    if (nearestIndex >= 0) {
+                        humidity = humidity === null ? data.hourly.relativehumidity_2m[nearestIndex] : humidity;
+                        pressure = pressure === null ? data.hourly.pressure_msl[nearestIndex] : pressure;
+                    }
+                }
                 if (pressure !== null && data.hourly_units?.pressure_msl === 'hPa') {
                     pressure = pressure / 33.8638866667;
                 }
