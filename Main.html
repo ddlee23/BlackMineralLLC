@@ -561,7 +561,8 @@
                     setInputValue('altitude', (data.elevation * 3.28084).toFixed(0));
                 }
 
-                setStatus('Environment data loaded successfully.');
+                const debugUnit = temperatureUnit || data.current_weather_units?.temperature || 'unknown';
+                setStatus(`Loaded ${temperature.toFixed(1)}°F from Open-Meteo (source unit: ${debugUnit}).`);
                 refreshSummary();
             } catch (error) {
                 setStatus(`Weather fetch failed: ${error.message}`, true);
