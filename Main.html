@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ScopeCalc">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+    <link rel="apple-touch-icon" href="icon-192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="icon-512.png" sizes="512x512">
+    <link rel="apple-touch-startup-image" href="splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="splash-2048x2732.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)">
+    <title>Ballistic Calculator - Rifle Scope Adjustment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        header {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin-bottom: 5px;
+            font-size: 28px;
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+
+        .form-section {
+            margin-bottom: 30px;
+        }
+
+        .form-section h3 {
+            color: #464feb;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-section h3::before {
+            content: '▸';
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        label .unit {
+            font-weight: 300;
+            color: #666;
+            font-size: 12px;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e6e6e6;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #464feb;
+            box-shadow: 0 0 5px rgba(70, 79, 235, 0.2);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .coordinate-panel {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .coordinate-card,
+        .coordinate-output-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(70, 79, 235, 0.12);
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(70, 79, 235, 0.08);
+            padding: 22px;
+        }
+
+        .coordinate-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .coordinate-header .icon {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%);
+            color: #4338ca;
+            font-size: 18px;
+        }
+
+        .coordinate-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .coordinate-card label,
+        .coordinate-card input {
+            display: block;
+        }
+
+        .coordinate-card input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #dbeafe;
+            background-color: #f8fbff;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .coordinate-card input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        }
+
+        .coordinate-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .coordinate-output-card pre {
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 18px;
+            color: #111827;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 260px;
+            overflow: auto;
+        }
+
+        .coordinate-output-card .output-note {
+            color: #475569;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        a {
+            text-decoration: none;
+            color: #464feb;
+        }
+
+        tr th, tr td {
+            border: 1px solid #e6e6e6;
+            padding: 12px;
+            text-align: left;
+        }
+
+        tr th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+            color: #1e3a8a;
+        }
+
+        tr td {
+            font-size: 14px;
+        }
+
+        .result-box {
+            background-color: #f0f4ff;
+            border-left: 4px solid #464feb;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .result-box h4 {
+            color: #1e3a8a;
+            margin-bottom: 10px;
+        }
+
+        .result-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #464feb;
+        }
+
+        button[type="submit"],
+        button[type="button"].calculate {
+            background-color: #464feb;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        button[type="submit"]:hover,
+        button[type="button"].calculate:hover {
+            background-color: #3a3fc6;
+        }
+
+        .info-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #0284c7;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #0c4a6e;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* details/summary toggle styling for advanced section */
+        details[open] summary::after,
+        details summary::after {
+            transition: transform 0.18s ease, opacity 0.18s ease;
+        }
+        summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 15px;
+        }
+        summary::-webkit-details-marker { display:none; }
+        summary::after {
+            content: '+';
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #eef2ff, #e0e7ff);
+            color: #4338ca;
+            font-weight: 700;
+            margin-left: 12px;
+        }
+        details[open] summary::after { content: '−'; transform: rotate(0deg); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎯 Ballistic Scope Calculator</h1>
+        <p>Adjust rifle scope settings based on environmental and ballistic factors</p>
+    </header>
+
+    <div class="container">
+        <div class="info-box">
+            <strong>Smart ballistics assistant:</strong> Enter the key shooting inputs below, then use your location to fill weather and wind from free APIs. Everything is summarized on one screen.
+        </div>
+
+        <div class="form-section">
+            <h3>Location & Weather</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input type="number" id="latitude" placeholder="34.0522" step="0.000001">
+                </div>
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input type="number" id="longitude" placeholder="-118.2437" step="0.000001">
+                </div>
+            </div>
+            <div class="coordinate-actions">
+                <button type="button" class="calculate" id="useLocationBtn">Use current location</button>
+                <button type="button" class="calculate" id="fetchWeatherBtn">Fetch weather data</button>
+                <button type="button" class="calculate" id="refreshBtn">Refresh summary</button>
+            </div>
+            <div class="output-note" id="locationNote">Use HTTPS or localhost on iPhone for geolocation and free API data.</div>
+        </div>
+
+        <details open class="form-section">
+            <summary>Ballistics input</summary>
+            <div class="form-row" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Range <span class="unit">(yards)</span></label>
+                    <input type="number" id="range" placeholder="300" min="0" step="10">
+                </div>
+                <div class="form-group">
+                    <label>Elevation Difference <span class="unit">(feet)</span></label>
+                    <input type="number" id="elevationDiff" placeholder="0" step="1">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Muzzle Velocity <span class="unit">(ft/s)</span></label>
+                    <input type="number" id="muzzleVelocity" placeholder="2800" min="0" step="10">
+                </div>
+                <div class="form-group">
+                    <label>Ballistic Coefficient (BC)</label>
+                    <input type="number" id="bulletBC" placeholder="0.450" min="0" step="0.01">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Wind Speed <span class="unit">(mph)</span></label>
+                    <input type="number" id="windSpeed" placeholder="0" min="0" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Wind Direction</label>
+                    <select id="windDirection">
+                        <option value="0">Tail 0°</option>
+                        <option value="45">Diag 45°</option>
+                        <option value="90">Cross 90°</option>
+                        <option value="180">Head 180°</option>
+                    </select>
+                </div>
+            </div>
+            <details class="form-section" style="margin-top: 20px; padding: 16px; border: 1px solid #dbeafe; border-radius: 12px; background: #f8fbff;">
+                <summary style="font-weight:700; cursor:pointer;">Advanced settings (optional)</summary>
+                <div class="form-row" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Projectile Mass <span class="unit">(grains)</span></label>
+                        <input type="number" id="projectileMass" placeholder="150" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Projectile Diameter <span class="unit">(inches)</span></label>
+                        <input type="number" id="projectileDiameter" placeholder="0.308" step="0.001">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Scope Height <span class="unit">(inches)</span></label>
+                        <input type="number" id="scopeHeight" placeholder="1.5" min="0" step="0.1" value="1.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Shooting Angle <span class="unit">(°)</span></label>
+                        <input type="number" id="shootingAngle" placeholder="0" min="-90" max="90" step="0.5">
+                    </div>
+                </div>
+            </details>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Altitude <span class="unit">(feet)</span></label>
+                    <input type="number" id="altitude" placeholder="0" min="0" step="10" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Temperature <span class="unit">(°F)</span></label>
+                    <input type="number" id="temperature" placeholder="59" step="1" value="59">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pressure <span class="unit">(inHg)</span></label>
+                    <input type="number" id="pressure" placeholder="29.92" step="0.01" value="29.92">
+                </div>
+                <div class="form-group">
+                    <label>Humidity <span class="unit">(%)</span></label>
+                    <input type="number" id="humidity" placeholder="50" min="0" max="100" step="1" value="50">
+                </div>
+            </div>
+        </details>
+
+        <div class="result-box">
+            <h4>Summary</h4>
+            <p id="summaryText">Press Refresh summary after entering your data.</p>
+            <div class="coordinate-grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap:20px; margin-top:16px;">
+                <div class="result-box" style="padding:16px; border-color:#c7d2fe; background:#f8fbff;">
+                    <div style="font-weight:700; margin-bottom:8px;">Effective Range</div>
+                    <div class="result-value" id="effectiveRange">-- yards</div>
+                </div>
+                <div class="result-box" style="padding:16px; border-color:#c7d2fe; background:#f8fbff;">
+                    <div style="font-weight:700; margin-bottom:8px;">Air Density</div>
+                    <div class="result-value" id="airDensity">-- lb/ft³</div>
+                </div>
+                <div class="result-box" style="padding:16px; border-color:#c7d2fe; background:#f8fbff;">
+                    <div style="font-weight:700; margin-bottom:8px;">Estimated Drop</div>
+                    <div class="result-value" id="dropResult">-- inches</div>
+                </div>
+                <div class="result-box" style="padding:16px; border-color:#c7d2fe; background:#f8fbff;">
+                    <div style="font-weight:700; margin-bottom:8px;">Wind Correction</div>
+                    <div class="result-value" id="windResult">-- MOA</div>
+                </div>
+            </div>
+            <div class="output-note" id="statusMessage" style="margin-top:16px; color:#334155;"></div>
+        </div>
+    </div>
+
+    <script>
+        const ballisticData = {};
+
+        function setStatus(message, isError = false) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = message || '';
+            el.style.color = isError ? '#b91c1c' : '#334155';
+        }
+
+        function getInputValue(id) {
+            const value = parseFloat(document.getElementById(id).value);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function setInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = value !== null && value !== undefined ? value : '';
+            }
+        }
+
+        function formatValue(value, unit = '') {
+            return value === null || value === undefined ? '--' : `${value}${unit}`;
+        }
+
+        async function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                if (!('geolocation' in navigator)) {
+                    reject(new Error('Geolocation is not available.'));
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    position => resolve(position.coords),
+                    error => reject(new Error(error.message)),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+        }
+
+        async function useCurrentLocation() {
+            try {
+                setStatus('Getting current location...');
+                const coords = await getCurrentLocation();
+                setInputValue('latitude', coords.latitude.toFixed(6));
+                setInputValue('longitude', coords.longitude.toFixed(6));
+                setStatus('Location captured. Now fetch environment data.');
+            } catch (error) {
+                setStatus(`Location failed: ${error.message}`, true);
+            }
+        }
+
+        async function fetchWeatherData() {
+            const lat = getInputValue('latitude');
+            const lon = getInputValue('longitude');
+            if (lat === null || lon === null) {
+                setStatus('Enter latitude and longitude first.', true);
+                return;
+            }
+            setStatus('Fetching environment data from Open-Meteo...');
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,pressure_msl,winddirection_10m,windgusts_10m&timezone=auto`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Open-Meteo request failed.');
+                }
+                const data = await response.json();
+                const current = data.current_weather;
+                if (!current) {
+                    throw new Error('Current weather data not returned.');
+                }
+
+                const timeIndex = data.hourly?.time?.indexOf(current.time);
+                const humidity = timeIndex >= 0 ? data.hourly.relativehumidity_2m[timeIndex] : null;
+                const pressure = timeIndex >= 0 ? data.hourly.pressure_msl[timeIndex] : null;
+
+                setInputValue('temperature', current.temperature.toFixed(1));
+                setInputValue('windSpeed', current.windspeed.toFixed(1));
+                setInputValue('windDirection', current.winddirection.toFixed(0));
+                if (humidity !== null) setInputValue('humidity', humidity.toFixed(0));
+                if (pressure !== null) setInputValue('pressure', pressure.toFixed(2));
+                if (typeof data.elevation === 'number') {
+                    setInputValue('altitude', (data.elevation * 3.28084).toFixed(0));
+                }
+
+                setStatus('Environment data loaded successfully.');
+                refreshSummary();
+            } catch (error) {
+                setStatus(`Weather fetch failed: ${error.message}`, true);
+            }
+        }
+
+        function calculateEffectiveRange() {
+            const range = getInputValue('range');
+            const elevDiff = getInputValue('elevationDiff') || 0;
+            if (range === null) {
+                return null;
+            }
+            return Math.sqrt(range * range + (elevDiff / 3) * (elevDiff / 3));
+        }
+
+        function calculateAirDensity() {
+            const altitude = getInputValue('altitude') || 0;
+            const pressure = getInputValue('pressure') || 29.92;
+            const temperature = getInputValue('temperature') || 59;
+            const seaLevelDensity = 0.0765;
+            const densityAdjustment = 1 - altitude / 100000;
+            const pressureAdjustment = pressure / 29.92;
+            const tempAdjustment = (518 + 32) / (518 + temperature);
+            return seaLevelDensity * densityAdjustment * pressureAdjustment * tempAdjustment;
+        }
+
+        function estimateDrop() {
+            const range = getInputValue('range');
+            const mv = getInputValue('muzzleVelocity');
+            const bc = getInputValue('bulletBC');
+            if (range === null || mv === null || bc === null || bc === 0) {
+                return null;
+            }
+            return (range * range) / (mv * 0.1) * (0.5 / bc);
+        }
+
+        function estimateWindCorrection() {
+            const windSpeed = getInputValue('windSpeed');
+            const range = getInputValue('range');
+            const bc = getInputValue('bulletBC');
+            if (windSpeed === null || range === null || bc === null || bc === 0) {
+                return null;
+            }
+            return (windSpeed * range * range) / (bc * 10000);
+        }
+
+        function refreshSummary() {
+            const effectiveRange = calculateEffectiveRange();
+            const airDensity = calculateAirDensity();
+            const drop = estimateDrop();
+            const windCorrection = estimateWindCorrection();
+
+            document.getElementById('effectiveRange').textContent = effectiveRange !== null ? `${effectiveRange.toFixed(1)} yards` : '--';
+            document.getElementById('airDensity').textContent = airDensity !== null ? `${airDensity.toFixed(4)} lb/ft³` : '--';
+            document.getElementById('dropResult').textContent = drop !== null ? `${drop.toFixed(2)} inches` : '--';
+            document.getElementById('windResult').textContent = windCorrection !== null ? `${windCorrection.toFixed(2)} MOA` : '--';
+
+            const range = getInputValue('range');
+            const mv = getInputValue('muzzleVelocity');
+            const bc = getInputValue('bulletBC');
+            if (range === null || mv === null || bc === null) {
+                document.getElementById('summaryText').textContent = 'Fill range, muzzle velocity, and BC to see full recommendations.';
+                setStatus('Summary updated with available values.');
+                return;
+            }
+
+            document.getElementById('summaryText').textContent =
+                `For ${range.toFixed(0)} yd, predicted drop is ${drop !== null ? drop.toFixed(2) : '--'} in and wind correction is ${windCorrection !== null ? windCorrection.toFixed(2) : '--'} MOA.`;
+            setStatus('Summary refreshed.');
+        }
+
+        document.getElementById('useLocationBtn').addEventListener('click', useCurrentLocation);
+        document.getElementById('fetchWeatherBtn').addEventListener('click', fetchWeatherData);
+        document.getElementById('refreshBtn').addEventListener('click', refreshSummary);
+
+        const autoRefreshFields = [
+            'latitude', 'longitude', 'range', 'elevationDiff', 'muzzleVelocity',
+            'bulletBC', 'windSpeed', 'windDirection', 'altitude', 'temperature',
+            'pressure', 'humidity'
+        ];
+
+        autoRefreshFields.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => {
+                    refreshSummary();
+                });
+            }
+        });
+
+        setStatus('Ready. Use location + fetch weather to auto-fill values.');
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .catch(err => console.error('Service Worker registration failed:', err));
+        }
+    </script>
+</body>
+</html>
