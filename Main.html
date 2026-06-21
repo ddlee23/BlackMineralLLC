@@ -520,23 +520,40 @@
             }
             setStatus('Fetching environment data from Open-Meteo...');
             try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,pressure_msl,winddirection_10m,windgusts_10m&timezone=auto`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&pressure_unit=inHg&hourly=relativehumidity_2m,pressure_msl,winddirection_10m,windgusts_10m&timezone=auto`;
+                console.debug('Fetching weather URL:', url);
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Open-Meteo request failed.');
                 }
                 const data = await response.json();
+                console.debug('Open-Meteo response:', data);
                 const current = data.current_weather;
                 if (!current) {
                     throw new Error('Current weather data not returned.');
                 }
 
+                const temperatureUnit = data.current_weather_units?.temperature;
+                let temperature = current.temperature;
+                if (temperatureUnit === '°C' || temperatureUnit === 'C') {
+                    temperature = (temperature * 9 / 5) + 32;
+                }
+
+                const windspeedUnit = data.current_weather_units?.windspeed;
+                let windSpeed = current.windspeed;
+                if (windspeedUnit === 'km/h' || windspeedUnit === 'kmh') {
+                    windSpeed = windSpeed / 1.60934;
+                }
+
                 const timeIndex = data.hourly?.time?.indexOf(current.time);
                 const humidity = timeIndex >= 0 ? data.hourly.relativehumidity_2m[timeIndex] : null;
-                const pressure = timeIndex >= 0 ? data.hourly.pressure_msl[timeIndex] : null;
+                let pressure = timeIndex >= 0 ? data.hourly.pressure_msl[timeIndex] : null;
+                if (pressure !== null && data.hourly_units?.pressure_msl === 'hPa') {
+                    pressure = pressure / 33.8638866667;
+                }
 
-                setInputValue('temperature', current.temperature.toFixed(1));
-                setInputValue('windSpeed', current.windspeed.toFixed(1));
+                setInputValue('temperature', temperature.toFixed(1));
+                setInputValue('windSpeed', windSpeed.toFixed(1));
                 setInputValue('windDirection', current.winddirection.toFixed(0));
                 if (humidity !== null) setInputValue('humidity', humidity.toFixed(0));
                 if (pressure !== null) setInputValue('pressure', pressure.toFixed(2));
