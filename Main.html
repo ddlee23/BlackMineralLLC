@@ -413,6 +413,13 @@
                     </select>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Wind Gust <span class="unit">(mph)</span></label>
+                    <input type="number" id="windGust" placeholder="0" min="0" step="0.5">
+                </div>
+            </div>
+            <div class="output-note" style="margin-bottom: 20px;">Wind speed is sustained; gusts are peak wind bursts.</div>
             <details class="form-section" style="margin-top: 20px; padding: 16px; border: 1px solid #dbeafe; border-radius: 12px; background: #f8fbff;">
                 <summary style="font-weight:700; cursor:pointer;">Advanced settings (optional)</summary>
                 <div class="form-row" style="margin-top: 16px;">
@@ -583,7 +590,8 @@
                     hourly: {
                         time: data.hourly?.time || [],
                         relativehumidity_2m: data.hourly?.relativehumidity_2m || [],
-                        pressure_msl: data.hourly?.pressure_msl || []
+                        pressure_msl: data.hourly?.pressure_msl || [],
+                        windgusts_10m: data.hourly?.windgusts_10m || []
                     },
                     elevation: data.elevation,
                     current_weather_units: data.current_weather_units || null,
@@ -684,6 +692,7 @@
                 let timeIndex = data.hourly?.time?.indexOf(current.time);
                 let humidity = timeIndex >= 0 ? data.hourly.relativehumidity_2m[timeIndex] : null;
                 let pressure = timeIndex >= 0 ? data.hourly.pressure_msl[timeIndex] : null;
+                let windGust = timeIndex >= 0 ? data.hourly.windgusts_10m?.[timeIndex] : null;
                 if (timeIndex < 0 && Array.isArray(data.hourly?.time)) {
                     const currentDate = new Date(current.time);
                     let nearestIndex = -1;
@@ -699,6 +708,7 @@
                     if (nearestIndex >= 0) {
                         humidity = humidity === null ? data.hourly.relativehumidity_2m[nearestIndex] : humidity;
                         pressure = pressure === null ? data.hourly.pressure_msl[nearestIndex] : pressure;
+                        windGust = windGust === null ? data.hourly.windgusts_10m?.[nearestIndex] : windGust;
                     }
                 }
                 if (pressure !== null && data.hourly_units?.pressure_msl === 'hPa') {
@@ -708,6 +718,7 @@
                 setInputValue('temperature', temperature.toFixed(1));
                 setInputValue('windSpeed', windSpeed.toFixed(1));
                 setInputValue('windDirection', current.winddirection.toFixed(0));
+                if (windGust !== null) setInputValue('windGust', windGust.toFixed(1));
                 if (humidity !== null) setInputValue('humidity', humidity.toFixed(0));
                 if (pressure !== null) setInputValue('pressure', pressure.toFixed(2));
                 if (typeof data.elevation === 'number') {
@@ -804,7 +815,7 @@
 
         const autoRefreshFields = [
             'latitude', 'longitude', 'range', 'elevationDiff', 'muzzleVelocity',
-            'bulletBC', 'windSpeed', 'windDirection', 'altitude', 'temperature',
+            'bulletBC', 'windSpeed', 'windDirection', 'windGust', 'altitude', 'temperature',
             'pressure', 'humidity'
         ];
 
